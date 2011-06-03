@@ -16,4 +16,4 @@ run:
 	./nweb 8181 $(CURDIR)
 
 pkill:
-	echo $(PID)
+	kill $(PID)
