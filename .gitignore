@@ -1,1 +1,7 @@
 *~
+nweb
+client
+*.o
+*.log
+*.swp
+*.swo
