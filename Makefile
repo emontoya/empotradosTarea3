@@ -1,4 +1,5 @@
-.PHONY: all clean
+.PHONY: all clean run pkill
+PID=$(shell ps | sed -n 's/^[[:space:]]*\([0-9]*\).*nweb*/\1/p')
 
 all: nweb client
 
@@ -10,3 +11,9 @@ client: client.c
 
 clean:
 	rm -f *.o nweb client
+
+run:
+	./nweb 8181 $(CURDIR)
+
+pkill:
+	echo $(PID)
