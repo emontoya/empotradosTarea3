@@ -9,8 +9,17 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
 #include "nweb.h"
+
+/* 
+ * Global variable to hold the new connection info.
+ * We should use a stack instead a single variable
+ * to enqueue the requested connections but this
+ * is just a nice to have if we have enough time
+ */
+struct nwebConnection nweb_socket;
 
 void log(int type, char *s1, char *s2, int num)
 {
@@ -36,8 +45,13 @@ void log(int type, char *s1, char *s2, int num)
 }
 
 /* this is a child web server process, so we can exit on errors */
-void web(int fd, int hit)
+void * web(void * param)
 {
+    /* this is just a temporary change to
+     * to prevent breaking the build but this information
+     * most be recovered under a thread safe context(mutex)*/
+    int fd = nweb_socket.socketfd, hit = nweb_socket.hit;
+
 	int j, file_fd, buflen, len;
 	long i, ret;
 	char * fstr;
@@ -103,6 +117,7 @@ void web(int fd, int hit)
 	exit(1);
 }
 
+pthread_mutex_t nweb_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char **argv)
 {
@@ -110,24 +125,18 @@ int main(int argc, char **argv)
 	size_t length;
 	static struct sockaddr_in cli_addr; /* static = initialised to zeros */
 	static struct sockaddr_in serv_addr; /* static = initialised to zeros */
+    pthread_t nweb_thread;
 
 	if( argc < 3  || argc > 3 || !strcmp(argv[1], "-?") ) {
-		(void)printf("hint: nweb Port-Number Top-Directory\n\n"
-	"\tnweb is a small and very safe mini web server\n"
-	"\tnweb only servers out file/web pages with extensions named below\n"
-	"\t and only from the named directory or its sub-directories.\n"
-	"\tThere is no fancy features = safe and secure.\n\n"
-	"\tExample: nweb 8181 /home/nwebdir &\n\n"
-	"\tOnly Supports:");
+		(void)printf(PARAMETERS_HINT); /* print information related to software usage */
 		for(i=0;extensions[i].ext != 0;i++)
 			(void)printf(" %s",extensions[i].ext);
 
-		(void)printf("\n\tNot Supported: URLs including \"..\", Java, Javascript, CGI\n"
-	"\tNot Supported: directories / /etc /bin /lib /tmp /usr /dev /sbin \n"
-	"\tNo warranty given or implied\n\tNigel Griffiths nag@uk.ibm.com\n"
-		    );
+		(void)printf(NOT_SUPORTED_FEATURES); /* print information about not suported features*/
+
 		exit(0);
 	}
+
 	if( !strncmp(argv[2],"/"   ,2 ) || !strncmp(argv[2],"/etc", 5 ) ||
 	    !strncmp(argv[2],"/bin",5 ) || !strncmp(argv[2],"/lib", 5 ) ||
 	    !strncmp(argv[2],"/tmp",5 ) || !strncmp(argv[2],"/usr", 5 ) ||
@@ -164,6 +173,12 @@ int main(int argc, char **argv)
 	if( listen(listenfd,64) <0)
 		log(ERROR,"system call","listen",0);
 
+    // TODO: Read the number of threads to create and validate it
+    /* Create the threads to handle incomming requests*/
+    for (i=0; i < MAX_NWEB_THREADS; i++){
+        pthread_create(&nweb_thread, NULL, web, NULL);
+    }
+    
 	for(hit=1; ;hit++) {
 		length = sizeof(cli_addr);
 		if((socketfd = accept(listenfd, (struct sockaddr *)&cli_addr, &length)) < 0)
@@ -175,7 +190,12 @@ int main(int argc, char **argv)
 		else {
 			if(pid == 0) { 	/* child */
 				(void)close(listenfd);
-				web(socketfd,hit); /* never returns */
+                /* Temporary code just to compile*/
+                nweb_socket.hit = hit;
+                nweb_socket.socketfd = socketfd;
+
+                /* This call was fixed just to compile*/
+				web(NULL); /* never returns */
 			} else { 	/* parent */
 				(void)close(socketfd);
 			}
