@@ -2,7 +2,7 @@
 
 all: nweb client
 
-nweb: nweb.c
+nweb: nweb.c nweb.h
 	gcc -O -DLINUX -lpthread nweb.c -o nweb
 
 client: client.c
