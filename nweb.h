@@ -42,5 +42,6 @@ hint:\tnweb Port-Number Top-Directory\n\n\
 struct nwebConnection{
     int socketfd;
     int hit ;
+    int processed;
 };
 #endif
