@@ -164,24 +164,16 @@ int main(int argc, char **argv)
 	if( listen(listenfd,64) <0)
 		log(ERROR,"system call","listen",0);
 
-	while(1) {
+	for(hit=1; 1; hit++) {
 		length = sizeof(cli_addr);
-    // 
-    log(LOG, "ciclo reloj", "nada",0);
+
+    log(LOG, "Ready to accept new connections", "process", hit);
 
 		if((socketfd = accept(listenfd, (struct sockaddr *)&cli_addr, &length)) < 0)
 			log(ERROR,"system call","accept",0);
 
-		//if((pid = fork()) < 0) {
-		//	log(ERROR,"system call","fork",0);
-		//}
-		//else {
-			//if(pid == 0) { 	/* child */
-				//(void)close(listenfd);
-				web(socketfd,hit); /* never returns */
-			//} else { 	/* parent */
-				(void)close(socketfd);
-			//}
-		//}
+    web(socketfd,hit); 
+
+    (void)close(socketfd);
 	}
 }
