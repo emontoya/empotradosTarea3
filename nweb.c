@@ -32,7 +32,7 @@ void log(int type, char *s1, char *s2, int num)
 		(void)write(fd,"\n",1);      
 		(void)close(fd);
 	}
-	if(type == ERROR || type == SORRY) exit(3);
+	if(type == ERROR) exit(3);
 }
 
 /* this is a child web server process, so we can exit on errors */
@@ -100,7 +100,7 @@ void web(int fd, int hit)
 #ifdef LINUX
 	sleep(1);	/* to allow socket to drain */
 #endif
-	exit(1);
+	//exit(1);
 }
 
 
@@ -164,21 +164,24 @@ int main(int argc, char **argv)
 	if( listen(listenfd,64) <0)
 		log(ERROR,"system call","listen",0);
 
-	for(hit=1; ;hit++) {
+	while(1) {
 		length = sizeof(cli_addr);
+    // 
+    log(LOG, "ciclo reloj", "nada",0);
+
 		if((socketfd = accept(listenfd, (struct sockaddr *)&cli_addr, &length)) < 0)
 			log(ERROR,"system call","accept",0);
 
-		if((pid = fork()) < 0) {
-			log(ERROR,"system call","fork",0);
-		}
-		else {
-			if(pid == 0) { 	/* child */
-				(void)close(listenfd);
+		//if((pid = fork()) < 0) {
+		//	log(ERROR,"system call","fork",0);
+		//}
+		//else {
+			//if(pid == 0) { 	/* child */
+				//(void)close(listenfd);
 				web(socketfd,hit); /* never returns */
-			} else { 	/* parent */
+			//} else { 	/* parent */
 				(void)close(socketfd);
-			}
-		}
+			//}
+		//}
 	}
 }
