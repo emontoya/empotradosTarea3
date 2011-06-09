@@ -109,12 +109,14 @@ void log(int type, char *s1, char *s2, int num)
 }
 
 /* this is a child web server process, so we can exit on errors */
-void web(int fd, int hit)
+void * web(void * param)
 {
-	int j, file_fd, buflen, len;
+	int j, file_fd, buflen, len, fd, hit;
 	long i, ret;
 	char * fstr;
 	static char buffer[BUFSIZE+1]; /* static so zero filled */
+
+  stack_pop(&connections, &fd, &hit);
 
 	ret =read(fd,buffer,BUFSIZE); 	/* read Web request in one go */
 	if(ret == 0 || ret == -1) {	/* read failure stop now */
@@ -268,7 +270,9 @@ int main(int argc, char **argv)
 		if((socketfd = accept(listenfd, (struct sockaddr *)&cli_addr, &length)) < 0)
 			log(ERROR,"system call","accept",0);
 
-    web(socketfd,hit); 
+    stack_push(&connections, socketfd, hit);
+
+    web(NULL); 
 
     (void)close(socketfd);
 	}
