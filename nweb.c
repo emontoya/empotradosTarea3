@@ -68,7 +68,7 @@ int stack_push(struct stack * p_stack, int socketfd, int hit){
   int result = 0;
   pthread_mutex_lock(&(*p_stack).mutex);
 
-  if ((*p_stack).top < MAX_SOCKET_QUEUE){
+  if ((*p_stack).top < MAX_SOCKET_QUEUE -1){
     (*p_stack).top++;
 
     (*p_stack).items[(*p_stack).top].socketfd = socketfd;
