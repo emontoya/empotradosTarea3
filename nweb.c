@@ -35,6 +35,54 @@ void stack_init(struct stack * p_stack){
   (*p_stack).top = 0;
 }
 
+int stack_get_count(struct stack * p_stack){
+  int result = 0;
+  pthread_mutex_lock(&(*p_stack).mutex);
+
+  result = (*p_stack).top;
+
+  pthread_mutex_unlock(&(*p_stack).mutex);
+
+  return result;
+}
+
+int stack_pop(struct stack * p_stack, int * socketfd, int * hit){
+  int result = 0;
+  pthread_mutex_lock(&(*p_stack).mutex);
+
+  if ((*p_stack).top > 0){
+    (*p_stack).top--;
+
+    (*socketfd) = (*p_stack).items[(*p_stack).top].socketfd;
+    (*hit) = (*p_stack).items[(*p_stack).top].hit;
+
+    result = 1;
+  }
+
+  pthread_mutex_unlock(&(*p_stack).mutex);
+
+  return result;
+}
+
+int stack_push(struct stack * p_stack, int socketfd, int hit){
+  int result = 0;
+  pthread_mutex_lock(&(*p_stack).mutex);
+
+  if ((*p_stack).top < MAX_SOCKET_QUEUE){
+    (*p_stack).top++;
+
+    (*p_stack).items[(*p_stack).top].socketfd = socketfd;
+    (*p_stack).items[(*p_stack).top].hit = hit;
+
+    result = 1;
+  }
+
+  pthread_mutex_unlock(&(*p_stack).mutex);
+
+  return result;
+}
+
+
 struct stack connections;
 
 void log(int type, char *s1, char *s2, int num)
