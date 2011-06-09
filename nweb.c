@@ -9,8 +9,33 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <getopt.h>
 
 #include "nweb.h"
+
+#define MAX_SOCKET_QUEUE 64
+#define DEFAULT_THREADS_COUNT 20
+
+/*
+ * Structure to store not processed requests 
+ */
+struct stack_item {
+  int socketfd;
+  int hit;
+};
+
+struct stack{
+  int top;
+  struct stack_item items[MAX_SOCKET_QUEUE];
+  pthread_mutex_t mutex;
+};
+
+void stack_init(struct stack * p_stack){
+  pthread_mutex_init(&((*p_stack).mutex));
+  (*p_stack).top = 0;
+}
+
+struct stack connections;
 
 void log(int type, char *s1, char *s2, int num)
 {
@@ -106,10 +131,28 @@ void web(int fd, int hit)
 
 int main(int argc, char **argv)
 {
-	int i, port, pid, listenfd, socketfd, hit;
+	int i, port, pid, listenfd, socketfd, hit, opt, threads_count;
 	size_t length;
 	static struct sockaddr_in cli_addr; /* static = initialised to zeros */
 	static struct sockaddr_in serv_addr; /* static = initialised to zeros */
+
+  threads_count = DEFAULT_THREADS_COUNT;
+
+  while((opt = getopt(argc, argv, "t:")) != -1){
+    switch(opt){
+      case 't':
+        threads_count = atoi(optarg);
+        break;
+      default:
+        printf("Argument error");
+        exit(1);
+        break;
+    }
+  }
+
+  /* Temporary fix*/
+  argc -= optind -1;
+  argv += optind -1;
 
 	if( argc < 3  || argc > 3 || !strcmp(argv[1], "-?") ) {
 		(void)printf("hint: nweb Port-Number Top-Directory\n\n"
@@ -128,6 +171,7 @@ int main(int argc, char **argv)
 		    );
 		exit(0);
 	}
+
 	if( !strncmp(argv[2],"/"   ,2 ) || !strncmp(argv[2],"/etc", 5 ) ||
 	    !strncmp(argv[2],"/bin",5 ) || !strncmp(argv[2],"/lib", 5 ) ||
 	    !strncmp(argv[2],"/tmp",5 ) || !strncmp(argv[2],"/usr", 5 ) ||
@@ -140,7 +184,8 @@ int main(int argc, char **argv)
 		exit(4);
 	}
 
-	/* Become deamon + unstopable and no zombies children (= no wait()) */
+	
+  /* Become deamon + unstopable and no zombies children (= no wait()) */
 	if(fork() != 0)
 		return 0; /* parent returns OK to shell */
 	(void)signal(SIGCLD, SIG_IGN); /* ignore child death */
@@ -163,6 +208,9 @@ int main(int argc, char **argv)
 		log(ERROR,"system call","bind",0);
 	if( listen(listenfd,64) <0)
 		log(ERROR,"system call","listen",0);
+
+  // initialize connection stack
+  stack_init(&connections);
 
 	for(hit=1; 1; hit++) {
 		length = sizeof(cli_addr);
